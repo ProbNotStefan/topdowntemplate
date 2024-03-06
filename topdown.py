@@ -19,8 +19,7 @@ while running:
     keys = pygame.key.get_pressed()
     player.handlemovement(keys[K_w] or keys[K_UP],keys[K_s] or keys[K_DOWN],keys[K_a] or keys[K_LEFT],keys[K_d] or keys[K_RIGHT],tiles.colliders,camera)
     screen.fill((0,0,0))
-    camera.rendergame(camera,player,tiles.colliders,tiles.floors)
+    camera.rendergame(player,tiles.colliders,tiles.floors)
     pygame.display.flip()
     clock.tick(60)
-
 pygame.quit()

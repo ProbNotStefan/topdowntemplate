@@ -14,17 +14,21 @@ class gamecamera:
         self.y += (player.y - self.y)/5
         self.render_x = self.x - self.screen.get_size()[0]/2
         self.render_y = self.y - self.screen.get_size()[1]/2
-    def rendergame(self,camera,player,walls,floors):
+    def rendergame(self,player,walls,floors):
         self.updatecamerapos(player)
         player.updatescreenpos(self)
+        overlays = []
         for rect in floors:
-            rect.updatescreendata(walls,self,player)
+            overlays.append(rect.updatescreendata(walls,self,player))
             pygame.draw.rect(self.screen,rect.color,rect.sprite)
         pygame.draw.ellipse(self.screen,(55,255,55),player.sprite)
         for rect in walls:
             rect.updatescreenpos(self)
             pygame.draw.rect(self.screen,(0,0,0),rect.sprite)
-
+        for floornum in range(len(floors)):
+            overlay = pygame.Surface((floors[floornum].size,floors[floornum].size),pygame.SRCALPHA)
+            overlay.fill((0,0,0,min(255,max(0,int(overlays[floornum])))))
+            self.screen.blit(overlay,(floors[floornum].sprite.x,floors[floornum].sprite.y))
 class collisionchecker:
     def __init__(self,size):
         self.collider = pygame.Rect(0,0,size,size)
@@ -149,26 +153,31 @@ class floorboard:
         self.color = (255,255,55)
         self.size = size
         self.sprite = pygame.Rect(x,y,size,size)
-        self.colcheck = collisionchecker(1)
+        self.colcheck = collisionchecker(2)
+        self.overlay = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
     def updatescreendata(self, walls, camera, player):
         self.color = pygame.Color(255, 255, 55)
         self.sprite.x = self.x - camera.render_x
         self.sprite.y = self.y - camera.render_y
         dif_x = player.x - self.x
         dif_y = player.y - self.y
-        distance = math.sqrt(dif_x ** 2 + dif_y ** 2)
+        distance = max(0,math.sqrt(dif_x ** 2 + dif_y ** 2)-15)
+        overlay_alpha = 0
         if distance < 200:
-            for index in range(1, math.floor(distance/(self.size)) + 1):
+            for index in range(1, math.floor(abs(distance)/(self.size)) + 1):
                 ratio = index * 30 / distance 
-                pos_x = self.x+self.size/2 + dif_x * ratio
-                pos_y = self.y+self.size/2 + dif_y * ratio
+                pos_x = self.x + self.size/2 + dif_x * ratio
+                pos_y = self.y + self.size/2 + dif_y * ratio
                 if self.colcheck.checkcollision(pos_x, pos_y, walls, camera):
-                    self.color = pygame.Color(max(0,int(60-distance/3)), max(0,int(60-distance/3)), 0)
+                    overlay_alpha = 255 - int(60 - distance / 3)
                     break
                 else:
-                    self.color -= pygame.Color(40, 40, 40)
+                    overlay_alpha += 30
         else:
-            self.color = (0, 0, 0)
+            self.color = (0,0,0)
+            overlay_alpha = 0
+
+        return overlay_alpha
 
 class wallcollider:
     def __init__(self):
@@ -176,14 +185,16 @@ class wallcollider:
         self.boundsize=30
         self.colliders = []
         self.floors = []
-        cords = [[16,16]]
+        cords = [[13, 13], [13, 14], [13, 15], [13, 16], [13, 17], [14, 13], [14, 14], [14, 15], [14, 16], [14, 17], [15, 13], [15, 14], [15, 15], [15, 16], [15, 17], [16, 13], [16, 14], [16, 15], [16, 16], [16, 17], [17, 13], [17, 14], [17, 15], [17, 16], [17, 17]]
         for i in range(self.boundsize):
             for j in range(self.boundsize):
-                if i == 0 or i == self.boundsize-1 or j == 0 or j == self.boundsize-1 or [i,j] in cords:
+                if i == 0 or i == self.boundsize-1 or j == 0 or j == self.boundsize-1:
                     self.colliders.append(collider(i*self.boxsize-self.boxsize*self.boundsize/2,j*self.boxsize-self.boxsize*self.boundsize/2,self.boxsize))
                 else:
                     if random.randint(1,3) == 1:
-                        if [i,j] not in cords:
+                        if not [i,j] in cords:
                             self.colliders.append(collider(i*self.boxsize-self.boxsize*self.boundsize/2,j*self.boxsize-self.boxsize*self.boundsize/2,self.boxsize))
+                        else:
+                            self.floors.append(floorboard(i*self.boxsize-self.boxsize*self.boundsize/2,j*self.boxsize-self.boxsize*self.boundsize/2,self.boxsize))
                     else:
                         self.floors.append(floorboard(i*self.boxsize-self.boxsize*self.boundsize/2,j*self.boxsize-self.boxsize*self.boundsize/2,self.boxsize))
